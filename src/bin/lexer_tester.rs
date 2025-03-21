@@ -1,11 +1,7 @@
 use std::env;
 use std::fs::File;
 
-mod value;
-mod bytecode;
-mod lexer;
-mod parser;
-mod vm;
+use rlua::lexer::{Lexer, Token};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -15,9 +11,12 @@ fn main() {
     }
 
     let file = File::open(&args[1]).unwrap();
-    let lexer = lexer::Lexer::new(file);
-    let proto = parser::Parser::load(lexer);  
+    let mut lexer = Lexer::new(file);
 
-    let mut exe_state = vm::ExeState::new();
-    exe_state.execute(&proto);
+    loop {
+        match lexer.next() {
+            Token::Eos => break,
+            any => {dbg!(any);},
+        }
+    }
 }

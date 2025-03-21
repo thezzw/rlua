@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{bytecode::Bytecode, parser::ParseProto, value::Value};
+use crate::{bytecode::Bytecode, parser::Parser, value::Value};
 
 fn rs_print(state: &mut ExeState) -> i32 {
     println!("{}", state.stack[1]);
@@ -23,7 +23,7 @@ impl ExeState {
         }
     }
 
-    pub fn execute(&mut self, proto: &ParseProto) {
+    pub fn execute(&mut self, proto: &Parser) {
         for bytecode in &proto.bytecodes {
             match *bytecode {
                 Bytecode::GetGlobal(stack_dst, const_idx) => {
@@ -32,7 +32,7 @@ impl ExeState {
                             let global_value = self.globals.get(key).unwrap_or(&Value::default()).clone();
                             self.set_stack(stack_dst, global_value);
                         },
-                        wrong_value => panic!("Unexpected global key: {:?}", wrong_value)
+                        unknown => panic!("Unexpected global key: {:?}", unknown)
                     };
                 },
                 Bytecode::LoadConst(stack_dst, const_idx) => {
@@ -45,7 +45,7 @@ impl ExeState {
                         Value::Function(f) => {
                             f(self);
                         },
-                        wrong_value => panic!("Expected function: {:?}", wrong_value)
+                        unknown => panic!("Expected function: {:?}", unknown)
                     }
                 }
             }
