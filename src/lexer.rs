@@ -2,7 +2,7 @@ use std::{fs::File, io::{Bytes, Read}, iter::Peekable};
 
 type LexerBytes = Peekable<Bytes<File>>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
 //  keywards
     And,    Break,  Do,     Else,   Elseif, End,
@@ -30,15 +30,30 @@ pub enum Token {
 }
 
 pub struct Lexer {
-    bytes: LexerBytes
+    bytes: LexerBytes,
+    ahead: Option<Token>,
 }
 
 impl Lexer {
     pub fn new(input: File) -> Self {
-        Self { bytes: input.bytes().into_iter().peekable() }
+        Self {
+            bytes: input.bytes().into_iter().peekable(),
+            ahead: None,
+        }
+    }
+
+    pub fn peek(&mut self) -> &Token {
+        if self.ahead.is_none() {
+            self.ahead = Some(self.next());
+        }
+        self.ahead.as_ref().unwrap()
     }
 
     pub fn next(&mut self) -> Token {
+        if self.ahead.is_some() {
+            return self.ahead.take().unwrap();
+        }
+
         loop {
             let next_byte = self.bytes.next();
             match next_byte {

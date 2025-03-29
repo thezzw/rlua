@@ -16,7 +16,7 @@ fn main() {
 
     let file = File::open(&args[1]).unwrap();
     let lexer = lexer::Lexer::new(file);
-    let proto = parser::Parser::load(lexer);  
+    let proto = parser::ParseProto::load(lexer);  
 
     let mut exe_state = vm::ExeState::new();
     exe_state.execute(&proto);

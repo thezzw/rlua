@@ -16,7 +16,7 @@ fn main() {
     loop {
         match lexer.next() {
             Token::Eos => break,
-            any => {dbg!(any);},
+            any => {println!("{:?}", any);},
         }
     }
 }
