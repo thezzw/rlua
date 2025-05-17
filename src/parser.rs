@@ -1,15 +1,16 @@
+use std::io::Read;
 use crate::{bytecode::Bytecode, lexer::{Lexer, Token}, value::Value};
 
-pub struct ParseProto {
+pub struct ParseProto<R: Read> {
     pub constants: Vec<Value>,
     pub bytecodes: Vec<Bytecode>,
 
     locals: Vec<String>,
-    lexer: Lexer,
+    lexer: Lexer<R>,
 }
 
-impl ParseProto {
-    pub fn load(lexer: Lexer) -> Self {
+impl<R: Read> ParseProto<R> {
+    pub fn load(lexer: Lexer<R>) -> Self {
         let mut proto = Self {
             constants: Vec::new(),
             bytecodes: Vec::new(),
@@ -46,19 +47,19 @@ impl ParseProto {
         if let Some(i) = self.get_local(&var) {
             self.load_exp(i);
         } else {
-            let dst = self.add_const(Value::String(var)) as u8;
+            let dst = self.add_const(var) as u8;
             let bytecode = match self.lexer.next() {
                 Token::Nil => Bytecode::SetGlobalConst(dst, self.add_const(Value::Nil) as u8),
-                Token::True => Bytecode::SetGlobalConst(dst, self.add_const(Value::Boolean(true)) as u8),
-                Token::False => Bytecode::SetGlobalConst(dst, self.add_const(Value::Boolean(false)) as u8),
-                Token::Float(f) => Bytecode::SetGlobalConst(dst, self.add_const(Value::Float(f)) as u8),
-                Token::Integer(i) => Bytecode::SetGlobalConst(dst, self.add_const(Value::Integer(i)) as u8),
-                Token::String(s) => Bytecode::SetGlobalConst(dst, self.add_const(Value::String(s)) as u8),
+                Token::True => Bytecode::SetGlobalConst(dst, self.add_const(true) as u8),
+                Token::False => Bytecode::SetGlobalConst(dst, self.add_const(false) as u8),
+                Token::Float(f) => Bytecode::SetGlobalConst(dst, self.add_const(f) as u8),
+                Token::Integer(i) => Bytecode::SetGlobalConst(dst, self.add_const(i) as u8),
+                Token::String(s) => Bytecode::SetGlobalConst(dst, self.add_const(s) as u8),
                 Token::Ident(var) => {
                     if let Some(i) = self.get_local(&var) {
                         Bytecode::SetGlobal(dst, i as u8)
                     } else {
-                        Bytecode::SetGlobalGlobal(dst, self.add_const(Value::String(var)) as u8)
+                        Bytecode::SetGlobalGlobal(dst, self.add_const(var) as u8)
                     }
                 },
                 _ => panic!("unexpected token"),
@@ -82,7 +83,7 @@ impl ParseProto {
                 }
             },
             Token::String(s) => {
-                let code = self.load_const(iarg, Value::String(s));
+                let code = self.load_const(iarg, s);
                 self.bytecodes.push(code);
             },
             _ => panic!("expected `(` or string")
@@ -108,7 +109,8 @@ impl ParseProto {
         self.locals.push(ident);
     }
 
-    fn add_const(&mut self, c: Value) -> usize {
+    fn add_const<T: Into<Value>>(&mut self, c: T) -> usize {
+        let c = c.into();
         let constants = &mut self.constants;
         constants.iter().position(|v| v == &c).unwrap_or_else(|| {
             constants.push(c);
@@ -116,7 +118,7 @@ impl ParseProto {
         })
     }
 
-    fn load_const(&mut self, dst: usize, c: Value) -> Bytecode {
+    fn load_const<T: Into<Value>>(&mut self, dst: usize, c: T) -> Bytecode {
         Bytecode::LoadConst(dst as u8, self.add_const(c) as u16)
     }
 
@@ -124,7 +126,7 @@ impl ParseProto {
         if let Some(idx) = self.get_local(&var) {
             Bytecode::Move(dst as u8, idx as u8)
         } else {
-            let idx = self.add_const(Value::String(var));
+            let idx = self.add_const(var);
             Bytecode::GetGlobal(dst as u8, idx as u8)
         }
     }
@@ -141,10 +143,10 @@ impl ParseProto {
             Token::Integer(i) => if let Ok(i) = i16::try_from(i) {
                 Bytecode::LoadInt(dst as u8, i)
             } else {
-                self.load_const(dst, Value::Integer(i))
+                self.load_const(dst, i)
             },
-            Token::Float(f) => self.load_const(dst, Value::Float(f)),
-            Token::String(s) => self.load_const(dst, Value::String(s)),
+            Token::Float(f) => self.load_const(dst, f),
+            Token::String(s) => self.load_const(dst, s),
             Token::Ident(var) => self.load_var(dst, var),
             _ => panic!("unexpected token")
         };
