@@ -1,5 +1,6 @@
 use std::env;
 use std::fs::File;
+use std::io::BufReader;
 
 mod value;
 mod bytecode;
@@ -15,8 +16,9 @@ fn main() {
     }
 
     let file = File::open(&args[1]).unwrap();
-    let lexer = lexer::Lexer::new(file);
-    let proto = parser::ParseProto::load(lexer);  
+    let input = BufReader::new(file);
+    let lexer = lexer::Lexer::new(input);
+    let proto = parser::ParseProto::load(lexer);
 
     let mut exe_state = vm::ExeState::new();
     exe_state.execute(&proto);

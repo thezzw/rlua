@@ -3,8 +3,12 @@ local print = print
 print(s)
 
 none = nil
-local_none = none
-print(local_none)
+
+local thezzw = none
+print(thezzw)
+
+none_alias = none
+print(none_alias)
 
 none = "none"
 print(none)

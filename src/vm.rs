@@ -1,9 +1,13 @@
-use std::collections::HashMap;
-
+use std::{collections::HashMap, io::Read};
 use crate::{bytecode::Bytecode, parser::ParseProto, value::Value};
 
 fn rs_print(state: &mut ExeState) -> i32 {
     println!("{}", state.stack[state.func_index + 1]);
+    0
+}
+
+fn rs_dbg_print(state: &mut ExeState) -> i32 {
+    println!("{:?}", state.stack[state.func_index + 1]);
     0
 }
 
@@ -17,6 +21,7 @@ impl ExeState {
     pub fn new() -> Self {
         let mut globals = HashMap::new();
         globals.insert("print".to_string(), Value::Function(rs_print));
+        globals.insert("dbg_print".to_string(), Value::Function(rs_dbg_print));
 
         Self {
             globals,
@@ -25,49 +30,29 @@ impl ExeState {
         }
     }
 
-    pub fn execute(&mut self, proto: &ParseProto) {
+    pub fn execute<R: Read>(&mut self, proto: &ParseProto<R>) {
         for bytecode in &proto.bytecodes {
             match *bytecode {
                 Bytecode::GetGlobal(stack_dst, const_idx) => {
-                    match &proto.constants[const_idx as usize] {
-                        Value::String(key) => {
-                            let global_value = self.globals.get(key).unwrap_or(&Value::default()).clone();
-                            self.set_stack(stack_dst, global_value);
-                        },
-                        unknown => panic!("invalid global key: {unknown:?}")
-                    };
+                    let key: &str = (&proto.constants[const_idx as usize]).into();
+                    let global_value = self.globals.get(key).unwrap_or(&Value::default()).clone();
+                    self.set_stack(stack_dst, global_value);
                 },
                 Bytecode::SetGlobal(ident_idx, src) => {
-                    match &proto.constants[ident_idx as usize] {
-                        Value::String(key) => {
-                            let value = self.stack[src as usize].clone();
-                            self.globals.insert(key.clone(), value);
-                        },
-                        unknown => panic!("invalid global key: {unknown:?}")
-                    };
+                    let key = &proto.constants[ident_idx as usize];
+                    let value = self.stack[src as usize].clone();
+                    self.globals.insert(key.into(), value);
                 },
                 Bytecode::SetGlobalConst(ident_idx, src) => {
-                    match &proto.constants[ident_idx as usize] {
-                        Value::String(key) => {
-                            let value = proto.constants[src as usize].clone();
-                            self.globals.insert(key.clone(), value);
-                        },  
-                        unknown => panic!("invalid global key: {unknown:?}")
-                    };
+                    let key = &proto.constants[ident_idx as usize];
+                    let value = proto.constants[src as usize].clone();
+                    self.globals.insert(key.into(), value);
                 },
                 Bytecode::SetGlobalGlobal(ident_idx, src) => {
-                    let name = proto.constants[ident_idx as usize].clone();
-                    if let Value::String(key) = name {
-                        let src = &proto.constants[src as usize];
-                        if let Value::String(src) = src {
-                            let value = self.globals.get(src).unwrap_or(&Value::Nil).clone();
-                            self.globals.insert(key, value);
-                        } else {
-                            panic!("invalid global key: {src:?}");
-                        }
-                    } else {
-                        panic!("invalid global key: {name:?}");
-                    }
+                    let name = &proto.constants[ident_idx as usize];
+                    let src: &str = (&proto.constants[src as usize]).into();
+                    let value = self.globals.get(src).unwrap_or(&Value::Nil).clone();
+                    self.globals.insert(name.into(), value);
                 },
                 Bytecode::LoadConst(stack_dst, const_idx) => {
                     let const_value = proto.constants[const_idx as usize].clone();
