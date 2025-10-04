@@ -19,5 +19,5 @@ pub enum Bytecode {
     SetTableConst(u8, u8, u8),
     SetFieldConst(u8, u8, u8),
     SetIntConst(u8, u8, u8),
-    SetList(u8, u8),
+    SetList(u8, u8, u8),
 }

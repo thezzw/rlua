@@ -108,14 +108,23 @@ impl ExeState {
                 }
                 Bytecode::SetTableConst(t, k, v) => {
                     let key = self.stack[k as usize].clone();
-                    let value = proto.constants[v as usize].clone();
+                    let value: Value = proto.constants[v as usize].clone();
                     self.set_table(t, key, value);
                 }
-                Bytecode::SetList(table, n) => {
+                Bytecode::SetList(table, tostore, nelems) => {
                     let ivalue = table as usize + 1;
                     if let Value::Table(table) = self.stack[table as usize].clone() {
-                        let values = self.stack.drain(ivalue .. ivalue + n as usize);
-                        table.borrow_mut().array.extend(values);
+                        let array = &mut table.borrow_mut().array;
+
+                        let cur_size = array.len();
+                        let new_size = cur_size + tostore as usize;
+                        array.reserve(new_size);
+
+                        let values = self.stack.drain(ivalue .. ivalue + tostore as usize);
+                        assert_eq!(values.len(), tostore as usize);
+                        for (i, v) in values.enumerate() {
+                            set_vec(array, nelems as usize + i, v);
+                        }
                     } else {
                         panic!("not table");
                     }

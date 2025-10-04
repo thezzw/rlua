@@ -361,6 +361,8 @@ impl<R: Read> ParseProto<R> {
             Array(ExpDesc)
         }
 
+        let mut stored = 0;
+        let mut tostore = 0;
         let mut narray = 0;
         let mut nmap = 0;
         loop {
@@ -416,9 +418,10 @@ impl<R: Read> ParseProto<R> {
                 TableEntry::Array(value) => {
                     self.discharge(sp0, value);
                     narray += 1;
-                    if narray % 2 == 50 {
-                        self.bytecodes.push(Bytecode::SetList(table as u8, 50));
-                        self.sp = table + 1;
+                    tostore += 1;
+                    if tostore == 50 {
+                        self.bytecodes.push(Bytecode::SetList(table as u8, tostore, stored));
+                        stored += tostore;
                     }
                 }
             }
@@ -431,7 +434,7 @@ impl<R: Read> ParseProto<R> {
         }
 
         if self.sp > table + 1 {
-            self.bytecodes.push(Bytecode::SetList(table as u8, (self.sp - (table + 1)) as u8));
+            self.bytecodes.push(Bytecode::SetList(table as u8, (self.sp - (table + 1)) as u8, stored));
         }
 
         self.bytecodes[inew] = Bytecode::NewTable(table as u8, narray as u8, nmap as u8);
