@@ -151,6 +151,10 @@ impl<R: Read> Lexer<R> {
         }
     }
 
+    pub fn expect(&mut self, t: Token) {
+        assert_eq!(self.next(), t);
+    }
+
     fn peek_byte(&mut self) -> u8 {
         match self.bytes.peek() {
             Some(Ok(byt)) => *byt,
@@ -286,7 +290,7 @@ impl<R: Read> Lexer<R> {
             }
         }
 
-        let mut n = (first_byte as char).to_digit(10).unwrap() as i64;
+        let mut n: i64 = (first_byte as char).to_digit(10).unwrap() as i64;
         loop {
             let ch = self.bytes.peek();
             match ch {
@@ -323,6 +327,8 @@ impl<R: Read> Lexer<R> {
     }
 
     fn parse_number_frac(&mut self, number_base: f64) -> Token {
+        self.bytes.next(); // consume '.'
+
         let mut n = 0;
         let mut x = 1.0;
         loop {
@@ -333,7 +339,7 @@ impl<R: Read> Lexer<R> {
                         b'0'..=b'9' => {
                             let int_byte = self.bytes.next().unwrap().unwrap();
                             n = n * 10 + (int_byte as char).to_digit(10).unwrap() as i64;
-                            x *= 10.0;   
+                            x *= 10.0;
                         },
                         b'e' | b'E' => return self.parse_number_exp(number_base + (n as f64) / x),
                         _ => break
